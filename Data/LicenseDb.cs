@@ -312,26 +312,29 @@ public class LicenseDb
         // If app exit action requested:
         if (action == "exit")
         {
-            var sid = req.SessionId;
-            var pid = req.ProcessId;
+            var sid = req.SessionId ?? "";
+            var pid = req.ProcessId ?? 0;
 
             var exitSql = @"
                 UPDATE PosSessionHistory 
                 SET EndedAt = @now, IsActive = 0, ExitReason = 'Clean Exit',
                     DurationSeconds = CAST((strftime('%s', @now) - strftime('%s', StartedAt)) AS INTEGER)
-                WHERE MachineId = @mid AND (SessionId = @sid OR (@pid > 0 AND ProcessId = @pid));
+                WHERE MachineId = @mid 
+                  AND ((@sid = '' AND @pid = 0) OR SessionId = @sid OR (@pid > 0 AND ProcessId = @pid));
 
-                DELETE FROM PosSessions WHERE MachineId = @mid AND (SessionId = @sid OR (@pid > 0 AND ProcessId = @pid));
+                DELETE FROM PosSessions 
+                WHERE MachineId = @mid 
+                  AND ((@sid = '' AND @pid = 0) OR SessionId = @sid OR (@pid > 0 AND ProcessId = @pid));
             ";
             using var cmdE = new SqliteCommand(exitSql, conn);
             cmdE.Parameters.AddWithValue("@now", now.ToString("o"));
             cmdE.Parameters.AddWithValue("@mid", req.MachineId);
-            cmdE.Parameters.AddWithValue("@sid", sid ?? "");
-            cmdE.Parameters.AddWithValue("@pid", pid ?? 0);
+            cmdE.Parameters.AddWithValue("@sid", sid);
+            cmdE.Parameters.AddWithValue("@pid", pid);
             await cmdE.ExecuteNonQueryAsync();
 
             await AddAuditTimelineInternalAsync(conn, req.MachineId, "AppExited", "POS Instance Stopped (OFF)", 
-                $"App instance (PID: {pid ?? 0}) closed cleanly by user.");
+                $"App instance(s) closed cleanly.");
 
             return (await GetByMachineIdAsync(req.MachineId))!;
         }
