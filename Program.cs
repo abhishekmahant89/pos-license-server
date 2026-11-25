@@ -33,6 +33,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors();
+app.UseStaticFiles();
 
 // Initialize database
 using (var scope = app.Services.CreateScope())
@@ -279,6 +280,66 @@ app.MapPost("/api/license/telegram/test", async (TelegramTestRequest req, Telegr
 {
     var (success, msg) = await tg.SendTestNotificationAsync(req.BotToken, req.ChatId);
     return Results.Ok(new { success, message = msg });
+});
+
+// -------------------------------------------------------------
+// PWA STATIC ASSETS EXPLICIT MAPPING
+// -------------------------------------------------------------
+string GetWwwrootFile(string fileName)
+{
+    string[] candidatePaths = {
+        Path.Combine(AppContext.BaseDirectory, "wwwroot", fileName),
+        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", fileName),
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "wwwroot", fileName)
+    };
+
+    foreach (var p in candidatePaths)
+    {
+        if (File.Exists(p)) return p;
+    }
+    return "";
+}
+
+app.MapGet("/manifest.json", () =>
+{
+    var p = GetWwwrootFile("manifest.json");
+    return File.Exists(p) ? Results.File(p, "application/manifest+json") : Results.NotFound();
+});
+
+app.MapGet("/sw.js", () =>
+{
+    var p = GetWwwrootFile("sw.js");
+    return File.Exists(p) ? Results.File(p, "application/javascript") : Results.NotFound();
+});
+
+app.MapGet("/favicon.ico", () =>
+{
+    var p = GetWwwrootFile("favicon.ico");
+    return File.Exists(p) ? Results.File(p, "image/x-icon") : Results.NotFound();
+});
+
+app.MapGet("/icon.svg", () =>
+{
+    var p = GetWwwrootFile("icon.svg");
+    return File.Exists(p) ? Results.File(p, "image/svg+xml") : Results.NotFound();
+});
+
+app.MapGet("/icon-192.png", () =>
+{
+    var p = GetWwwrootFile("icon-192.png");
+    return File.Exists(p) ? Results.File(p, "image/png") : Results.NotFound();
+});
+
+app.MapGet("/icon-512.png", () =>
+{
+    var p = GetWwwrootFile("icon-512.png");
+    return File.Exists(p) ? Results.File(p, "image/png") : Results.NotFound();
+});
+
+app.MapGet("/icon-apple-touch.png", () =>
+{
+    var p = GetWwwrootFile("icon-apple-touch.png");
+    return File.Exists(p) ? Results.File(p, "image/png") : Results.NotFound();
 });
 
 // -------------------------------------------------------------

@@ -1,0 +1,70 @@
+{
+  "name": "Mahant POS - License & Multi-Instance Diagnostics Hub",
+  "short_name": "POS Hub",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "id": "/?source=pwa",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#0B1120",
+  "theme_color": "#0F172A",
+  "description": "Developer Central Portal • Live Multi-Process Tracking • Installed / Uninstalled History • Diagnostics & Error Hub",
+  "orientation": "any",
+  "categories": [
+    "business",
+    "utilities",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-apple-touch.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Clients",
+      "short_name": "Clients",
+      "description": "View live running POS machines",
+      "url": "/?view=clients",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Running History",
+      "short_name": "History",
+      "description": "App ON/OFF running history",
+      "url": "/?view=history",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Diagnostics & Errors",
+      "short_name": "Errors",
+      "description": "Real-time error logs and stack traces",
+      "url": "/?view=errors",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

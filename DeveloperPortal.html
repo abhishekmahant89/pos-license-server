@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🛡️ Mahant POS - License &amp; Multi-Instance Diagnostics Hub</title>
+    
+    <!-- PWA & Mobile Web Capabilities -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0F172A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="POS Hub">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon-apple-touch.png">
     <style>
         :root {
             --bg-dark: #0B0F19;
@@ -222,7 +233,14 @@
             <h1>🛡️ Mahant POS License &amp; Diagnostics Hub</h1>
             <p>Developer Central Portal • Live Multi-Process Tracking • Installed / Uninstalled History • Data Sync &amp; Error Logs</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <!-- PWA Install Button -->
+            <button id="btnInstallPwa" onclick="installPwaPrompt()" style="display: none; background: linear-gradient(135deg, #10B981, #059669); border: 1px solid #34D399; color: white; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);">
+                📲 Install App
+            </button>
+            <div id="pwaInstalledBadge" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; color: #34D399; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 12px; align-items: center; gap: 6px;">
+                ✨ Installed App
+            </div>
             <button onclick="openTelegramModal()" style="background: rgba(30, 41, 59, 0.9); border: 1px solid #38BDF8; color: white; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
                 ✈️ Telegram Alerts <span id="telegramBadge" style="font-size: 11px; padding: 2px 7px; border-radius: 6px; font-weight: 700; background: rgba(148, 163, 184, 0.2); color: #94A3B8;">Loading...</span>
             </button>
@@ -1532,6 +1550,95 @@
                 statusMsg.style.color = '#EF4444';
             }
         }
+
+        // -------------------------------------------------------------
+        // PWA INSTALLATION & SERVICE WORKER LOGIC
+        // -------------------------------------------------------------
+        let deferredPwaPrompt = null;
+
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then((reg) => {
+                    console.log('✅ PWA Service Worker registered:', reg.scope);
+                }).catch((err) => {
+                    console.warn('⚠️ PWA Service Worker registration warning:', err);
+                });
+            });
+        }
+
+        // Detect Standalone / Installed Display Mode
+        function checkStandaloneMode() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 window.navigator.standalone === true ||
+                                 document.referrer.includes('android-app://');
+            const btn = document.getElementById('btnInstallPwa');
+            const badge = document.getElementById('pwaInstalledBadge');
+
+            if (isStandalone) {
+                if (btn) btn.style.display = 'none';
+                if (badge) badge.style.display = 'inline-flex';
+                return true;
+            }
+            return false;
+        }
+
+        // Capture Chrome / Edge beforeinstallprompt event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPwaPrompt = e;
+            if (!checkStandaloneMode()) {
+                const btn = document.getElementById('btnInstallPwa');
+                if (btn) btn.style.display = 'inline-flex';
+            }
+        });
+
+        // Prompt User to Install PWA
+        async function installPwaPrompt() {
+            if (deferredPwaPrompt) {
+                deferredPwaPrompt.prompt();
+                const choice = await deferredPwaPrompt.userChoice;
+                if (choice.outcome === 'accepted') {
+                    console.log('User installed PWA');
+                    const btn = document.getElementById('btnInstallPwa');
+                    if (btn) btn.style.display = 'none';
+                    const badge = document.getElementById('pwaInstalledBadge');
+                    if (badge) badge.style.display = 'inline-flex';
+                }
+                deferredPwaPrompt = null;
+            } else {
+                // If beforeinstallprompt hasn't fired or on iOS Safari
+                const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIos) {
+                    alert('📲 To install on iOS:\n1. Tap the Share button in Safari (box with up arrow)\n2. Tap "Add to Home Screen"');
+                } else {
+                    alert('📲 To install this Hub:\nLook for the Install icon (computer screen with down arrow) in your browser address bar, or open browser menu (⋮) -> "Install App / Save and Share"');
+                }
+            }
+        }
+
+        // Listen for App Installed Event
+        window.addEventListener('appinstalled', () => {
+            console.log('🎉 PWA successfully installed on device!');
+            const btn = document.getElementById('btnInstallPwa');
+            if (btn) btn.style.display = 'none';
+            const badge = document.getElementById('pwaInstalledBadge');
+            if (badge) badge.style.display = 'inline-flex';
+            deferredPwaPrompt = null;
+        });
+
+        // Check display mode on load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!checkStandaloneMode()) {
+                // On desktop Chrome/Edge or Mobile, show install button so users have a visible entry point
+                setTimeout(() => {
+                    const btn = document.getElementById('btnInstallPwa');
+                    if (btn && !checkStandaloneMode()) {
+                        btn.style.display = 'inline-flex';
+                    }
+                }, 800);
+            }
+        });
 
         // Initial Load & Auto-Refresh active view
         loadClients();
