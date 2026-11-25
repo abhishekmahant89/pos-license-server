@@ -35,6 +35,19 @@ var app = builder.Build();
 app.UseCors();
 app.UseStaticFiles();
 
+// Production Security Headers Middleware
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    if (context.Request.IsHttps && !context.Response.Headers.ContainsKey("Strict-Transport-Security"))
+    {
+        context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    }
+    await next();
+});
+
 // Initialize database
 using (var scope = app.Services.CreateScope())
 {
