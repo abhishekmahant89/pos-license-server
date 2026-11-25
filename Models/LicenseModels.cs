@@ -197,3 +197,20 @@ public class DeveloperContactInfo
     public string Email { get; set; } = "info@abhishekmhant.in";
     public string Website { get; set; } = "www.abhishekmhant.in";
 }
+
+public class TelegramConfig
+{
+    public string BotToken { get; set; } = string.Empty;
+    public string ChatId { get; set; } = string.Empty;
+    public bool EnableAppStartAlert { get; set; } = true;
+    public bool EnableSyncErrorAlert { get; set; } = true;
+    public bool EnableAppErrorAlert { get; set; } = true;
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(BotToken) && !string.IsNullOrWhiteSpace(ChatId);
+}
+
+public class TelegramTestRequest
+{
+    public string? BotToken { get; set; }
+    public string? ChatId { get; set; }
+}

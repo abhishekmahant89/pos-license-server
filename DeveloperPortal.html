@@ -222,9 +222,14 @@
             <h1>🛡️ Mahant POS License &amp; Diagnostics Hub</h1>
             <p>Developer Central Portal • Live Multi-Process Tracking • Installed / Uninstalled History • Data Sync &amp; Error Logs</p>
         </div>
-        <div class="dev-badge">
-            Developer: Abhishek Mahant
-            <small>📞 +91 96918 83083 • www.abhishekmhant.in</small>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <button onclick="openTelegramModal()" style="background: rgba(30, 41, 59, 0.9); border: 1px solid #38BDF8; color: white; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                ✈️ Telegram Alerts <span id="telegramBadge" style="font-size: 11px; padding: 2px 7px; border-radius: 6px; font-weight: 700; background: rgba(148, 163, 184, 0.2); color: #94A3B8;">Loading...</span>
+            </button>
+            <div class="dev-badge">
+                Developer: Abhishek Mahant
+                <small>📞 +91 96918 83083 • www.abhishekmhant.in</small>
+            </div>
         </div>
     </div>
 
@@ -550,6 +555,70 @@
                         <span style="font-size: 13px; color: var(--text-muted);">Complete chronological lifecycle audit log from initial setup installation to current status:</span>
                     </div>
                     <ul id="timelineList" class="timeline-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telegram Configuration Modal -->
+    <div id="telegramModal" class="modal-overlay">
+        <div class="modal" style="width: 540px; max-width: 95vw;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="display: flex; align-items: center; gap: 8px; font-size: 18px; color: white; margin: 0;">
+                    ✈️ Telegram Real-Time Alerts Setup
+                </h3>
+                <button class="details-close" onclick="closeTelegramModal()">✕</button>
+            </div>
+
+            <div id="tgConfigModeBadge" style="display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 6px; margin-bottom: 12px; font-weight: 700;"></div>
+
+            <p style="font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+                POS runtime alerts, system crashes, aur sync errors Telegram bot par instant send hote hain. Default token &amp; chat ID system me rehta hai, aur aap custom override bhi kar sakte hain.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; text-align: left;">
+                <div>
+                    <label style="font-size: 12px; font-weight: 700; color: #CBD5E1; display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>1. Telegram Bot Token <span style="font-weight: normal; color: var(--text-muted); font-size: 11px;">(@BotFather)</span>:</span>
+                        <span id="tgTokenSourceLabel" style="font-size: 10.5px; color: #94A3B8;"></span>
+                    </label>
+                    <input type="password" id="tgBotToken" class="modal-input" placeholder="e.g. 7123456789:AAHk..." style="font-family: monospace; font-size: 12.5px;">
+                </div>
+
+                <div>
+                    <label style="font-size: 12px; font-weight: 700; color: #CBD5E1; display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>2. Telegram Chat ID <span style="font-weight: normal; color: var(--text-muted); font-size: 11px;">(@userinfobot)</span>:</span>
+                        <span id="tgChatSourceLabel" style="font-size: 10.5px; color: #94A3B8;"></span>
+                    </label>
+                    <input type="text" id="tgChatId" class="modal-input" placeholder="e.g. 123456789" style="font-family: monospace; font-size: 12.5px;">
+                </div>
+
+                <div style="background: rgba(15, 23, 42, 0.7); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                    <div style="font-size: 11.5px; font-weight: 700; color: #94A3B8; text-transform: uppercase;">Alert Notification Rules:</div>
+                    <label style="font-size: 12.5px; color: #E2E8F0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="tgStartAlert" checked> 🟢 <b>POS Start Alert</b> (Client software online hote hi message)
+                    </label>
+                    <label style="font-size: 12.5px; color: #E2E8F0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="tgSyncAlert" checked> 🚨 <b>Data Sync Error Alert</b> (Orders sync fail hone par)
+                    </label>
+                    <label style="font-size: 12.5px; color: #E2E8F0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="tgErrorAlert" checked> ⚠️ <b>System Error / Crash Alert</b> (Unhandled exceptions)
+                    </label>
+                </div>
+
+                <div id="tgStatusMsg" style="font-size: 12px; min-height: 20px; font-weight: 600; margin-top: 4px;"></div>
+            </div>
+
+            <div class="modal-buttons" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" style="background: #2563EB; color: white; padding: 8px 14px; border-radius: 6px; font-weight: 700; font-size: 12.5px; border: none; cursor: pointer;" onclick="testTelegram()">
+                    📨 Send Test Message
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" id="btnResetTgDefault" style="display: none; background: #475569; color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; border: none; cursor: pointer;" onclick="resetTelegramToDefault()">
+                        🔄 Reset Default
+                    </button>
+                    <button class="btn-cancel" onclick="closeTelegramModal()">Close</button>
+                    <button class="btn-confirm" onclick="saveTelegramSettings()">💾 Save Settings</button>
                 </div>
             </div>
         </div>
@@ -1286,8 +1355,188 @@
             return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        // Telegram Bot Integration
+        async function loadTelegramStatus() {
+            try {
+                const res = await fetch('/api/license/telegram/settings');
+                const data = await res.json();
+                const badge = document.getElementById('telegramBadge');
+                if (data.isConfigured) {
+                    if (data.isCustomOverride) {
+                        badge.innerText = '🟡 Custom Active';
+                        badge.style.background = 'rgba(234, 179, 8, 0.3)';
+                        badge.style.color = '#FDE047';
+                    } else {
+                        badge.innerText = '🟢 Connected';
+                        badge.style.background = 'rgba(16, 185, 129, 0.35)';
+                        badge.style.color = '#34D399';
+                    }
+                } else {
+                    badge.innerText = '⚪ Not Set';
+                    badge.style.background = 'rgba(239, 68, 68, 0.25)';
+                    badge.style.color = '#FCA5A5';
+                }
+            } catch { }
+        }
+
+        async function openTelegramModal() {
+            document.getElementById('telegramModal').style.display = 'flex';
+            const statusMsg = document.getElementById('tgStatusMsg');
+            const modeBadge = document.getElementById('tgConfigModeBadge');
+            const btnReset = document.getElementById('btnResetTgDefault');
+            const tokenSource = document.getElementById('tgTokenSourceLabel');
+            const chatSource = document.getElementById('tgChatSourceLabel');
+
+            statusMsg.innerText = 'Loading settings...';
+            statusMsg.style.color = '#94A3B8';
+
+            try {
+                const res = await fetch('/api/license/telegram/settings');
+                const data = await res.json();
+                document.getElementById('tgBotToken').value = data.maskedBotToken || '';
+                document.getElementById('tgChatId').value = data.chatId || '';
+                document.getElementById('tgStartAlert').checked = data.enableAppStartAlert !== false;
+                document.getElementById('tgSyncAlert').checked = data.enableSyncErrorAlert !== false;
+                document.getElementById('tgErrorAlert').checked = data.enableAppErrorAlert !== false;
+
+                if (data.isCustomOverride) {
+                    modeBadge.innerText = '✏️ Custom DB Override Active';
+                    modeBadge.style.background = 'rgba(234, 179, 8, 0.25)';
+                    modeBadge.style.color = '#FDE047';
+                    btnReset.style.display = 'inline-block';
+                    tokenSource.innerText = '(Overridden in DB)';
+                    chatSource.innerText = '(Overridden in DB)';
+                } else if (data.hasDefaultConfig) {
+                    modeBadge.innerText = '🛡️ System Default Active (appsettings.json)';
+                    modeBadge.style.background = 'rgba(16, 185, 129, 0.25)';
+                    modeBadge.style.color = '#34D399';
+                    btnReset.style.display = 'none';
+                    tokenSource.innerText = '(System Default)';
+                    chatSource.innerText = '(System Default)';
+                } else {
+                    modeBadge.innerText = '⚪ No Configuration Set';
+                    modeBadge.style.background = 'rgba(148, 163, 184, 0.2)';
+                    modeBadge.style.color = '#94A3B8';
+                    btnReset.style.display = 'none';
+                    tokenSource.innerText = '';
+                    chatSource.innerText = '';
+                }
+
+                if (data.isConfigured) {
+                    statusMsg.innerText = '✓ Telegram Bot is active and alerts are enabled.';
+                    statusMsg.style.color = '#34D399';
+                } else {
+                    statusMsg.innerText = '⚠️ Telegram Bot is not configured yet. Set token or configure default.';
+                    statusMsg.style.color = '#F59E0B';
+                }
+            } catch (err) {
+                statusMsg.innerText = 'Error loading settings: ' + err.message;
+                statusMsg.style.color = '#EF4444';
+            }
+        }
+
+        function closeTelegramModal() {
+            document.getElementById('telegramModal').style.display = 'none';
+        }
+
+        async function resetTelegramToDefault() {
+            if (!confirm('Kya aap settings ko System Default par reset karna chahte hain?')) return;
+            const statusMsg = document.getElementById('tgStatusMsg');
+            statusMsg.innerText = '⏳ Resetting to system default...';
+            statusMsg.style.color = '#38BDF8';
+
+            try {
+                const res = await fetch('/api/license/telegram/reset-default', { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    statusMsg.innerText = '✓ Settings successfully reset to System Default!';
+                    statusMsg.style.color = '#34D399';
+                    await openTelegramModal();
+                    await loadTelegramStatus();
+                } else {
+                    statusMsg.innerText = '❌ Failed to reset to default.';
+                    statusMsg.style.color = '#EF4444';
+                }
+            } catch (err) {
+                statusMsg.innerText = '❌ Reset error: ' + err.message;
+                statusMsg.style.color = '#EF4444';
+            }
+        }
+
+        async function saveTelegramSettings() {
+            const token = document.getElementById('tgBotToken').value.trim();
+            const chat = document.getElementById('tgChatId').value.trim();
+            const startAlert = document.getElementById('tgStartAlert').checked;
+            const syncAlert = document.getElementById('tgSyncAlert').checked;
+            const errAlert = document.getElementById('tgErrorAlert').checked;
+            const statusMsg = document.getElementById('tgStatusMsg');
+
+            statusMsg.innerText = '⏳ Saving settings...';
+            statusMsg.style.color = '#38BDF8';
+
+            try {
+                const payload = {
+                    botToken: token,
+                    chatId: chat,
+                    enableAppStartAlert: startAlert,
+                    enableSyncErrorAlert: syncAlert,
+                    enableAppErrorAlert: errAlert
+                };
+
+                const res = await fetch('/api/license/telegram/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    statusMsg.innerText = '✓ Settings saved successfully!';
+                    statusMsg.style.color = '#34D399';
+                    await openTelegramModal();
+                    await loadTelegramStatus();
+                } else {
+                    statusMsg.innerText = '❌ Failed to save: ' + (result.message || 'Unknown error');
+                    statusMsg.style.color = '#EF4444';
+                }
+            } catch (err) {
+                statusMsg.innerText = '❌ Error saving: ' + err.message;
+                statusMsg.style.color = '#EF4444';
+            }
+        }
+
+        async function testTelegram() {
+            const token = document.getElementById('tgBotToken').value.trim();
+            const chat = document.getElementById('tgChatId').value.trim();
+            const statusMsg = document.getElementById('tgStatusMsg');
+
+            statusMsg.innerText = '⏳ Sending test message to Telegram...';
+            statusMsg.style.color = '#38BDF8';
+
+            try {
+                const res = await fetch('/api/license/telegram/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ botToken: token, chatId: chat })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    statusMsg.innerText = '🎉 ' + result.message;
+                    statusMsg.style.color = '#34D399';
+                    await loadTelegramStatus();
+                } else {
+                    statusMsg.innerText = '❌ Test failed: ' + result.message;
+                    statusMsg.style.color = '#EF4444';
+                }
+            } catch (err) {
+                statusMsg.innerText = '❌ Test error: ' + err.message;
+                statusMsg.style.color = '#EF4444';
+            }
+        }
+
         // Initial Load & Auto-Refresh active view
         loadClients();
+        loadTelegramStatus();
+        setInterval(loadTelegramStatus, 15000);
         setInterval(() => {
             if (currentView === 'clients') loadClients();
             else if (currentView === 'history') loadRunningHistory();

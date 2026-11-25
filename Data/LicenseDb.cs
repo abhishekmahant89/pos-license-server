@@ -103,6 +103,12 @@ public class LicenseDb
                 Timestamp TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_posaudit_mid ON PosAuditTimeline(MachineId);
+
+            CREATE TABLE IF NOT EXISTS PosSettings (
+                Key TEXT PRIMARY KEY,
+                Value TEXT,
+                UpdatedAt TEXT
+            );
         ";
 
         using var cmd = new SqliteCommand(sql, conn);
@@ -942,5 +948,68 @@ public class LicenseDb
                 return true;
         }
         return false;
+    }
+
+    // -------------------------------------------------------------
+    // SETTINGS & TELEGRAM CONFIGURATION
+    // -------------------------------------------------------------
+    public async Task<string> GetSettingAsync(string key, string defaultValue = "")
+    {
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync();
+            var sql = "SELECT Value FROM PosSettings WHERE Key = @k LIMIT 1;";
+            using var cmd = new SqliteCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@k", key);
+            var val = await cmd.ExecuteScalarAsync();
+            return val?.ToString() ?? defaultValue;
+        }
+        catch
+        {
+            return defaultValue;
+        }
+    }
+
+    public async Task SetSettingAsync(string key, string value)
+    {
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync();
+            var sql = @"
+                INSERT INTO PosSettings (Key, Value, UpdatedAt)
+                VALUES (@k, @v, @u)
+                ON CONFLICT(Key) DO UPDATE SET Value = @v, UpdatedAt = @u;
+            ";
+            using var cmd = new SqliteCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@k", key);
+            cmd.Parameters.AddWithValue("@v", value);
+            cmd.Parameters.AddWithValue("@u", DateTime.UtcNow.ToString("o"));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch { }
+    }
+
+    public async Task<TelegramConfig> GetTelegramConfigAsync()
+    {
+        var config = new TelegramConfig
+        {
+            BotToken = await GetSettingAsync("Telegram_BotToken", ""),
+            ChatId = await GetSettingAsync("Telegram_ChatId", ""),
+            EnableAppStartAlert = bool.TryParse(await GetSettingAsync("Telegram_EnableAppStartAlert", "true"), out var startVal) ? startVal : true,
+            EnableSyncErrorAlert = bool.TryParse(await GetSettingAsync("Telegram_EnableSyncErrorAlert", "true"), out var syncVal) ? syncVal : true,
+            EnableAppErrorAlert = bool.TryParse(await GetSettingAsync("Telegram_EnableAppErrorAlert", "true"), out var errVal) ? errVal : true
+        };
+        return config;
+    }
+
+    public async Task SaveTelegramConfigAsync(TelegramConfig config)
+    {
+        await SetSettingAsync("Telegram_BotToken", config.BotToken ?? "");
+        await SetSettingAsync("Telegram_ChatId", config.ChatId ?? "");
+        await SetSettingAsync("Telegram_EnableAppStartAlert", config.EnableAppStartAlert.ToString().ToLower());
+        await SetSettingAsync("Telegram_EnableSyncErrorAlert", config.EnableSyncErrorAlert.ToString().ToLower());
+        await SetSettingAsync("Telegram_EnableAppErrorAlert", config.EnableAppErrorAlert.ToString().ToLower());
     }
 }

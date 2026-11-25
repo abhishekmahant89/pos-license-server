@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PosLicenseServer.Data;
 using PosLicenseServer.Models;
+using PosLicenseServer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,7 @@ if (!string.IsNullOrEmpty(envPort))
 // Add services
 var dbPath = Environment.GetEnvironmentVariable("DATABASE_PATH") ?? "licenses.db";
 builder.Services.AddSingleton<LicenseDb>(sp => new LicenseDb($"Data Source={dbPath}"));
+builder.Services.AddSingleton<TelegramBotService>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -44,7 +46,7 @@ using (var scope = app.Services.CreateScope())
 // -------------------------------------------------------------
 
 // 1. POS Client Heartbeat & Verification (Tracks Multi-Instance Sessions)
-app.MapPost("/api/license/verify", async (HttpContext ctx, LicenseCheckRequest req, LicenseDb db) =>
+app.MapPost("/api/license/verify", async (HttpContext ctx, LicenseCheckRequest req, LicenseDb db, TelegramBotService telegram) =>
 {
     if (string.IsNullOrWhiteSpace(req.MachineId))
     {
@@ -53,6 +55,12 @@ app.MapPost("/api/license/verify", async (HttpContext ctx, LicenseCheckRequest r
 
     var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
     var license = await db.RegisterOrHeartbeatAsync(req, clientIp);
+
+    // Telegram Notification on Client Start / Heartbeat
+    if (req.Action != "exit" && req.Action != "uninstall")
+    {
+        _ = telegram.NotifyAppStartedAsync(license.MachineId, license.RestaurantName ?? license.ClientName ?? "Client POS", req.ProcessId ?? 0, clientIp);
+    }
 
     var response = new LicenseResponse
     {
@@ -131,29 +139,39 @@ app.MapGet("/api/license/clients/{machineId}/details", async (string machineId, 
 });
 
 // 7. Client: Report Data Sync Activity
-app.MapPost("/api/license/sync-report", async (SyncReportRequest req, LicenseDb db) =>
+app.MapPost("/api/license/sync-report", async (SyncReportRequest req, LicenseDb db, TelegramBotService telegram) =>
 {
     if (string.IsNullOrWhiteSpace(req.MachineId))
     {
         return Results.BadRequest(new { success = false, message = "MachineId is required." });
     }
     await db.AddSyncLogAsync(req);
+
+    if (!string.Equals(req.Status, "Success", StringComparison.OrdinalIgnoreCase))
+    {
+        _ = telegram.NotifySyncErrorAsync(req.MachineId, req.MachineId, req.SyncType, req.RecordsCount, req.Status ?? "Failed", req.Details ?? "");
+    }
+
     return Results.Ok(new { success = true });
 });
 
 // 8. Client: Report Error or Warning Log
-app.MapPost("/api/license/report-error", async (ErrorReportRequest req, LicenseDb db) =>
+app.MapPost("/api/license/report-error", async (ErrorReportRequest req, LicenseDb db, TelegramBotService telegram) =>
 {
     if (string.IsNullOrWhiteSpace(req.MachineId))
     {
         return Results.BadRequest(new { success = false, message = "MachineId is required." });
     }
     await db.AddErrorLogAsync(req);
+
+    var windowContext = !string.IsNullOrWhiteSpace(req.ActiveWindow) ? $" [Window: {req.ActiveWindow}]" : "";
+    _ = telegram.NotifyAppErrorAsync(req.MachineId, req.MachineId, req.Severity ?? "Error", $"{req.Source}{windowContext}", req.Message);
+
     return Results.Ok(new { success = true });
 });
 
 // 9. Developer: Remote Control (Activate, Kill/Suspend, Set Trial, Broadcast Message)
-app.MapPost("/api/license/control", async (RemoteControlRequest req, LicenseDb db) =>
+app.MapPost("/api/license/control", async (RemoteControlRequest req, LicenseDb db, TelegramBotService telegram) =>
 {
     if (string.IsNullOrWhiteSpace(req.MachineId) || string.IsNullOrWhiteSpace(req.Action))
     {
@@ -167,6 +185,8 @@ app.MapPost("/api/license/control", async (RemoteControlRequest req, LicenseDb d
     }
 
     var updated = await db.GetByMachineIdAsync(req.MachineId);
+    _ = telegram.NotifyRemoteControlAsync(req.MachineId, updated?.RestaurantName ?? updated?.ClientName ?? req.MachineId, req.Action, req.DeveloperMessage ?? "", "Developer Portal");
+
     return Results.Ok(new { success = true, license = updated });
 });
 
@@ -218,6 +238,47 @@ app.MapGet("/api/license/reports/audit-timeline", async (LicenseDb db) =>
 {
     var timeline = await db.GetAllAuditTimelineAsync();
     return Results.Ok(timeline);
+});
+
+// -------------------------------------------------------------
+// TELEGRAM ALERT CONFIGURATION & TESTING APIS
+// -------------------------------------------------------------
+app.MapGet("/api/license/telegram/settings", async (TelegramBotService tg) =>
+{
+    var cfg = await tg.GetEffectiveConfigAsync();
+    var (hasOverride, overrideToken, overrideChatId) = await tg.GetOverrideStatusAsync();
+    var maskedToken = string.IsNullOrWhiteSpace(cfg.BotToken) ? "" :
+        (cfg.BotToken.Length > 10 ? cfg.BotToken.Substring(0, 10) + "..." : cfg.BotToken);
+
+    return Results.Ok(new
+    {
+        isConfigured = cfg.IsConfigured,
+        maskedBotToken = maskedToken,
+        chatId = cfg.ChatId,
+        isCustomOverride = hasOverride,
+        hasDefaultConfig = !string.IsNullOrWhiteSpace(tg.GetDefaultBotToken()),
+        enableAppStartAlert = cfg.EnableAppStartAlert,
+        enableSyncErrorAlert = cfg.EnableSyncErrorAlert,
+        enableAppErrorAlert = cfg.EnableAppErrorAlert
+    });
+});
+
+app.MapPost("/api/license/telegram/settings", async (TelegramConfig req, TelegramBotService tg) =>
+{
+    await tg.SaveConfigAsync(req);
+    return Results.Ok(new { success = true, message = "Telegram alert configuration saved successfully." });
+});
+
+app.MapPost("/api/license/telegram/reset-default", async (TelegramBotService tg) =>
+{
+    await tg.ResetToDefaultAsync();
+    return Results.Ok(new { success = true, message = "Settings reset to system default." });
+});
+
+app.MapPost("/api/license/telegram/test", async (TelegramTestRequest req, TelegramBotService tg) =>
+{
+    var (success, msg) = await tg.SendTestNotificationAsync(req.BotToken, req.ChatId);
+    return Results.Ok(new { success, message = msg });
 });
 
 // -------------------------------------------------------------
