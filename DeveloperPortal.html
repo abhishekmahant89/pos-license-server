@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Mahant POS - License &amp; Multi-Instance Diagnostics Hub</title>
+    <style>
+        :root {
+            --bg-dark: #0B0F19;
+            --bg-card: #151D2F;
+            --border-color: #243049;
+            --text-main: #F1F5F9;
+            --text-muted: #94A3B8;
+            --accent-cyan: #38BDF8;
+            --accent-green: #10B981;
+            --accent-amber: #F59E0B;
+            --accent-red: #EF4444;
+            --accent-purple: #A855F7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); padding: 24px 32px; min-height: 100vh; }
+
+        /* Top Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+        .header-title h1 { font-size: 24px; font-weight: 800; color: white; display: flex; align-items: center; gap: 10px; }
+        .header-title p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        .dev-badge {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(16, 185, 129, 0.15));
+            border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 10px 18px;
+            text-align: right; font-size: 12px; color: #E2E8F0; font-weight: 600;
+        }
+        .dev-badge small { display: block; color: var(--accent-cyan); font-weight: 400; margin-top: 2px; }
+
+        /* KPI Cards Grid */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .kpi-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 16px 18px; position: relative; overflow: hidden;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .kpi-running::before { background: #10B981; }
+        .kpi-installs::before { background: var(--accent-cyan); }
+        .kpi-uninstalled::before { background: var(--accent-red); }
+        .kpi-active::before { background: var(--accent-green); }
+        .kpi-trial::before { background: var(--accent-amber); }
+        .kpi-killed::before { background: #DC2626; }
+
+        .kpi-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 30px; font-weight: 800; margin: 6px 0 2px 0; }
+        .kpi-running .kpi-value { color: #10B981; }
+        .kpi-installs .kpi-value { color: var(--accent-cyan); }
+        .kpi-uninstalled .kpi-value { color: var(--accent-red); }
+        .kpi-active .kpi-value { color: var(--accent-green); }
+        .kpi-trial .kpi-value { color: var(--accent-amber); }
+        .kpi-killed .kpi-value { color: #F87171; }
+
+        /* Master Top Navigation Bar */
+        .main-nav-bar {
+            display: flex; gap: 8px; margin-bottom: 22px; background: #111827; padding: 7px; border-radius: 12px;
+            border: 1px solid var(--border-color); overflow-x: auto;
+        }
+        .main-nav-btn {
+            background: transparent; border: none; color: #94A3B8; font-weight: 700; font-size: 13.5px;
+            padding: 11px 20px; cursor: pointer; border-radius: 8px; transition: 0.15s; white-space: nowrap;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .main-nav-btn:hover { color: white; background: rgba(255, 255, 255, 0.05); }
+        .main-nav-btn.active {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 165, 233, 0.1));
+            color: var(--accent-cyan); border: 1px solid rgba(56, 189, 248, 0.45);
+            box-shadow: 0 2px 10px rgba(56, 189, 248, 0.2);
+        }
+
+        /* View Sections */
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Tables & Cards */
+        .table-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        .toolbar {
+            padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;
+            gap: 12px; background: #182236; border-bottom: 1px solid var(--border-color); flex-wrap: wrap;
+        }
+        .toolbar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 300px; }
+        .toolbar-right { display: flex; align-items: center; gap: 10px; }
+
+        .search-box {
+            background: #0F172A; border: 1px solid var(--border-color); border-radius: 8px;
+            padding: 9px 14px; color: white; font-size: 13px; width: 340px; outline: none; transition: 0.15s;
+        }
+        .search-box:focus { border-color: var(--accent-cyan); box-shadow: 0 0 8px rgba(56, 189, 248, 0.2); }
+
+        .filter-select {
+            background: #0F172A; border: 1px solid var(--border-color); border-radius: 8px;
+            padding: 9px 12px; color: white; font-size: 13px; outline: none; cursor: pointer;
+        }
+
+        .btn-refresh {
+            background: #334155; color: white; border: none; border-radius: 8px; padding: 9px 16px;
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.15s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-refresh:hover { background: #475569; }
+
+        .btn-export {
+            background: #10B981; color: white; border: none; border-radius: 8px; padding: 9px 16px;
+            font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.15s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-export:hover { background: #059669; }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th { background: #131B2E; padding: 12px 16px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); }
+        td { padding: 13px 16px; border-bottom: 1px solid #1E293B; vertical-align: middle; }
+        tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+
+        /* Badges */
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 700; }
+        .badge-active { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-trial { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-suspended { background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-expired { background: rgba(148, 163, 184, 0.15); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.3); }
+        .badge-live { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981; font-weight: 800; animation: pulseGlow 2s infinite; }
+        @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+
+        /* Action Buttons */
+        .btn-action { padding: 5px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; border: none; cursor: pointer; transition: 0.1s; margin-right: 4px; }
+        .btn-activate { background: #059669; color: white; }
+        .btn-activate:hover { background: #10B981; }
+        .btn-kill { background: #DC2626; color: white; }
+        .btn-kill:hover { background: #EF4444; }
+        .btn-trial { background: #D97706; color: white; }
+        .btn-trial:hover { background: #F59E0B; }
+        .btn-msg { background: #4F46E5; color: white; }
+        .btn-msg:hover { background: #6366F1; }
+        .btn-key { background: #0284C7; color: white; }
+        .btn-key:hover { background: #38BDF8; color: #0F172A; }
+        .btn-details { background: #8B5CF6; color: white; }
+        .btn-details:hover { background: #A78BFA; }
+
+        /* Modal Overlays */
+        .details-overlay {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); display: none;
+            justify-content: center; align-items: center; z-index: 1000; padding: 20px;
+        }
+        .details-modal {
+            background: #111827; border: 1px solid var(--border-color); border-radius: 16px;
+            width: 950px; max-width: 95vw; height: 85vh; display: flex; flex-direction: column;
+            overflow: hidden; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+        }
+        .details-header {
+            padding: 20px 24px; background: #162032; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .details-title h2 { font-size: 20px; color: white; display: flex; align-items: center; gap: 8px; }
+        .details-title p { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+        .details-close { background: transparent; border: none; color: #94A3B8; font-size: 22px; cursor: pointer; }
+        .details-close:hover { color: white; }
+
+        .details-stats {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 16px 24px;
+            background: #0F172A; border-bottom: 1px solid var(--border-color);
+        }
+        .stat-box { background: #162032; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; }
+        .stat-box small { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+        .stat-box .val { font-size: 15px; font-weight: 700; color: white; margin-top: 4px; }
+
+        .tabs { display: flex; gap: 8px; padding: 12px 24px 0 24px; background: #162032; border-bottom: 1px solid #243049; }
+        .tab-btn {
+            background: transparent; border: none; color: #94A3B8; font-weight: 700; font-size: 13px;
+            padding: 10px 16px; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.15s;
+        }
+        .tab-btn:hover { color: white; }
+        .tab-btn.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); background: rgba(56, 189, 248, 0.05); }
+
+        .details-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .sub-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .sub-table th { background: #162032; padding: 9px 12px; color: var(--text-muted); font-weight: 600; text-align: left; }
+        .sub-table td { padding: 11px 12px; border-bottom: 1px solid #1E293B; vertical-align: middle; }
+        .sub-table tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+
+        .timeline-list { list-style: none; position: relative; padding-left: 24px; }
+        .timeline-list::before { content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: #334155; }
+        .timeline-item { position: relative; margin-bottom: 18px; }
+        .timeline-dot {
+            position: absolute; left: -24px; top: 3px; width: 16px; height: 16px; border-radius: 50%;
+            background: #0F172A; border: 2px solid var(--accent-cyan); display: flex; align-items: center; justify-content: center;
+        }
+        .timeline-time { font-size: 11px; color: var(--text-muted); }
+        .timeline-title { font-size: 13px; font-weight: 700; color: white; margin-top: 1px; }
+        .timeline-desc { font-size: 12px; color: #CBD5E1; margin-top: 2px; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: none;
+            justify-content: center; align-items: center; z-index: 1100;
+        }
+        .modal {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px;
+            padding: 24px; width: 440px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        }
+        .modal h3 { font-size: 18px; margin-bottom: 12px; color: #38BDF8; }
+        .modal-input {
+            width: 100%; background: #0F172A; border: 1px solid var(--border-color); border-radius: 8px;
+            padding: 10px; color: white; font-size: 13px; margin: 10px 0 16px 0; outline: none;
+        }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-cancel { background: #334155; color: white; padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer; }
+        .btn-confirm { background: var(--accent-cyan); color: #0F172A; font-weight: 700; padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-title">
+            <h1>🛡️ Mahant POS License &amp; Diagnostics Hub</h1>
+            <p>Developer Central Portal • Live Multi-Process Tracking • Installed / Uninstalled History • Data Sync &amp; Error Logs</p>
+        </div>
+        <div class="dev-badge">
+            Developer: Abhishek Mahant
+            <small>📞 +91 96918 83083 • www.abhishekmhant.in</small>
+        </div>
+    </div>
+
+    <!-- KPI Metrics -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-running" style="box-shadow: 0 0 16px rgba(16, 185, 129, 0.25); border-color: #059669;">
+            <div class="kpi-title" style="color: #34D399;">🟢 RUNNING POS (LIVE)</div>
+            <div class="kpi-value" id="kpiRunning">0</div>
+            <span style="font-size: 12px; color: #34D399; font-weight: 600;">Active POS Instances Open Right Now</span>
+        </div>
+        <div class="kpi-card kpi-installs">
+            <div class="kpi-title">📦 Active Installations</div>
+            <div class="kpi-value" id="kpiInstalled">0</div>
+            <span style="font-size: 12px; color: var(--text-muted);">Currently Installed Machines</span>
+        </div>
+        <div class="kpi-card kpi-uninstalled">
+            <div class="kpi-title">❌ Uninstalled Clients</div>
+            <div class="kpi-value" id="kpiUninstalled">0</div>
+            <span style="font-size: 12px; color: #F87171;">Machines that Uninstalled</span>
+        </div>
+        <div class="kpi-card kpi-active">
+            <div class="kpi-title">Permanent Licensed</div>
+            <div class="kpi-value" id="kpiActive">0</div>
+            <span style="font-size: 12px; color: #34D399;">Fully Activated POS</span>
+        </div>
+        <div class="kpi-card kpi-trial">
+            <div class="kpi-title">Trial Mode</div>
+            <div class="kpi-value" id="kpiTrial">0</div>
+            <span style="font-size: 12px; color: #FBBF24;">Testing Period (15 Days)</span>
+        </div>
+        <div class="kpi-card kpi-killed">
+            <div class="kpi-title">Suspended / Killed</div>
+            <div class="kpi-value" id="kpiSuspended">0</div>
+            <span style="font-size: 12px; color: #F87171;">Remotely Blocked</span>
+        </div>
+    </div>
+
+    <!-- MASTER NAVIGATION BAR FOR REPORTS -->
+    <div class="main-nav-bar">
+        <button class="main-nav-btn active" id="btnViewClients" onclick="switchMainView('clients')">
+            💻 Client Machines &amp; Control (<span id="cntClients">0</span>)
+        </button>
+        <button class="main-nav-btn" id="btnViewHistory" onclick="switchMainView('history')">
+            ⏱️ App Running History (ON / OFF) (<span id="cntHistory">0</span>)
+        </button>
+        <button class="main-nav-btn" id="btnViewSync" onclick="switchMainView('sync')">
+            🔄 Data Sync Report (<span id="cntSync">0</span>)
+        </button>
+        <button class="main-nav-btn" id="btnViewErrors" onclick="switchMainView('errors')">
+            ⚠️ Error &amp; Diagnostics Report (<span id="cntErrors" style="color: #F87171; font-weight: bold;">0</span>)
+        </button>
+        <button class="main-nav-btn" id="btnViewTimeline" onclick="switchMainView('timeline')">
+            📜 Full Audit Timeline (<span id="cntTimeline">0</span>)
+        </button>
+    </div>
+
+    <!-- VIEW 1: CLIENT MANAGEMENT TABLE -->
+    <div id="secClients" class="view-section active">
+        <div class="table-card">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" id="searchBox" class="search-box" placeholder="🔍 Search client, restaurant, or machine ID..." onkeyup="filterClients()">
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn-export" onclick="exportClientsCsv()">📥 Export CSV</button>
+                    <button class="btn-refresh" onclick="loadClients()">🔄 Refresh Clients</button>
+                </div>
+            </div>
+
+            <table id="tblClients">
+                <thead>
+                    <tr>
+                        <th>Live Status &amp; Instances</th>
+                        <th>Install State</th>
+                        <th>License Status</th>
+                        <th>Restaurant / Client</th>
+                        <th>Machine ID</th>
+                        <th>Version &amp; IP</th>
+                        <th>Trial Days</th>
+                        <th>Last Heartbeat</th>
+                        <th style="text-align: right;">Developer Remote Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clientTableBody">
+                    <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading registered POS machines...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VIEW 2: ⏱️ APP RUNNING HISTORY (ON / OFF) REPORT -->
+    <div id="secHistory" class="view-section">
+        <div class="table-card">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" id="searchHistory" class="search-box" placeholder="🔍 Search machine, app or exit reason..." onkeyup="filterHistory()">
+                    <select id="filterHistoryStatus" class="filter-select" onchange="filterHistory()">
+                        <option value="all">All Running &amp; Exited</option>
+                        <option value="running">🟢 Currently Running</option>
+                        <option value="exited">⚪ Closed / Exited</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn-export" onclick="exportHistoryCsv()">📥 Export History CSV</button>
+                    <button class="btn-refresh" onclick="loadRunningHistory()">🔄 Refresh History</button>
+                </div>
+            </div>
+
+            <table id="tblHistory">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Machine ID</th>
+                        <th>PID</th>
+                        <th>App Name &amp; Path</th>
+                        <th>Started At (Turned ON)</th>
+                        <th>Ended At (Turned OFF)</th>
+                        <th>Uptime Duration</th>
+                        <th>Exit Details</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 25px;">Loading running history...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VIEW 3: 🔄 DATA SYNC REPORT -->
+    <div id="secSync" class="view-section">
+        <div class="table-card">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" id="searchSync" class="search-box" placeholder="🔍 Search machine, sync type or status..." onkeyup="filterSync()">
+                    <select id="filterSyncStatus" class="filter-select" onchange="filterSync()">
+                        <option value="all">All Sync Statuses</option>
+                        <option value="Success">🟢 Success Only</option>
+                        <option value="Failed">🔴 Failed / Errors</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn-export" onclick="exportSyncCsv()">📥 Export Sync CSV</button>
+                    <button class="btn-refresh" onclick="loadSyncHistory()">🔄 Refresh Sync Logs</button>
+                </div>
+            </div>
+
+            <table id="tblSync">
+                <thead>
+                    <tr>
+                        <th>Sync Timestamp</th>
+                        <th>Machine ID</th>
+                        <th>Sync Type</th>
+                        <th>Records Count</th>
+                        <th>Status</th>
+                        <th>Details &amp; Server Response</th>
+                    </tr>
+                </thead>
+                <tbody id="syncMasterTableBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 25px;">Loading data sync history...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VIEW 4: ⚠️ ERROR & DIAGNOSTICS REPORT -->
+    <div id="secErrors" class="view-section">
+        <div class="table-card">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" id="searchErrors" class="search-box" placeholder="🔍 Search machine, source or error message..." onkeyup="filterErrors()">
+                    <select id="filterErrorSeverity" class="filter-select" onchange="filterErrors()">
+                        <option value="all">All Severities</option>
+                        <option value="Error">🔴 Critical &amp; Errors</option>
+                        <option value="Warning">🟡 Warnings</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn-export" onclick="exportErrorsCsv()">📥 Export Error Logs CSV</button>
+                    <button class="btn-refresh" onclick="loadErrorLogs()">🔄 Refresh Diagnostics</button>
+                </div>
+            </div>
+
+            <table id="tblErrors">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Severity</th>
+                        <th>Active Window / Screen</th>
+                        <th>Machine ID</th>
+                        <th>Component Source</th>
+                        <th>Exception / Error Message</th>
+                        <th>Stack Trace</th>
+                    </tr>
+                </thead>
+                <tbody id="errorMasterTableBody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">Loading diagnostics and error reports...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VIEW 5: 📜 FULL AUDIT TIMELINE -->
+    <div id="secTimeline" class="view-section">
+        <div class="table-card">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input type="text" id="searchTimeline" class="search-box" placeholder="🔍 Search machine, event title or action..." onkeyup="filterTimeline()">
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn-export" onclick="exportTimelineCsv()">📥 Export Timeline CSV</button>
+                    <button class="btn-refresh" onclick="loadAuditTimeline()">🔄 Refresh Timeline</button>
+                </div>
+            </div>
+
+            <div style="padding: 24px;">
+                <ul id="timelineMasterList" class="timeline-list">
+                    <li style="color: var(--text-muted); padding: 10px;">Loading audit events...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPREHENSIVE CLIENT DETAILS & DIAGNOSTICS MODAL -->
+    <div id="detailsModal" class="details-overlay">
+        <div class="details-modal">
+            <div class="details-header">
+                <div class="details-title">
+                    <h2 id="modalClientName">Abhishek Mahant POS Client</h2>
+                    <p id="modalClientMeta">Machine ID: MPOS-XXXX • IP: 127.0.0.1 • v2.1.0</p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-refresh" onclick="refreshCurrentDetails()">🔄 Refresh</button>
+                    <button class="details-close" onclick="closeDetailsModal()">✕</button>
+                </div>
+            </div>
+
+            <div class="details-stats">
+                <div class="stat-box">
+                    <small>Live Running POS</small>
+                    <div class="val" id="detLiveRunning">🟢 1 Instance Running</div>
+                </div>
+                <div class="stat-box">
+                    <small>Installed Date &amp; Time</small>
+                    <div class="val" id="detInstalledAt" style="font-size: 13px;">📅 2026-11-16 17:09</div>
+                </div>
+                <div class="stat-box">
+                    <small>Uninstalled Date &amp; Time</small>
+                    <div class="val" id="detUninstalledAt" style="font-size: 13px;">Never (Active)</div>
+                </div>
+                <div class="stat-box">
+                    <small>License &amp; Key</small>
+                    <div class="val" id="detLicenseStatus" style="font-size: 13px;">⏳ Trial (2 Days)</div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('tabHistory')">⏱️ App Running History (ON / OFF)</button>
+                <button class="tab-btn" onclick="switchTab('tabSync')">🔄 Data Sync History</button>
+                <button class="tab-btn" onclick="switchTab('tabErrors')">⚠️ Error &amp; Diagnostics Details</button>
+                <button class="tab-btn" onclick="switchTab('tabTimeline')">📜 Full Audit Timeline</button>
+            </div>
+
+            <div class="details-body">
+                <div id="tabHistory" class="tab-content active">
+                    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-muted);">History of all application launches, running uptime durations, and clean exits:</span>
+                    </div>
+                    <table class="sub-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Process ID</th>
+                                <th>App Name</th>
+                                <th>Turned ON (Started)</th>
+                                <th>Turned OFF (Ended)</th>
+                                <th>Uptime Duration</th>
+                                <th>Exit Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div id="tabSync" class="tab-content">
+                    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-muted);">Synchronization history between local POS, Android devices, and Cloud Database:</span>
+                    </div>
+                    <table class="sub-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Sync Type</th>
+                                <th>Records Count</th>
+                                <th>Status</th>
+                                <th>Details / Latency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="syncTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div id="tabErrors" class="tab-content">
+                    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-muted);">Exceptions, warnings, network failures, or crash reports reported by client software:</span>
+                    </div>
+                    <table class="sub-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Severity</th>
+                                <th>Active Window</th>
+                                <th>Source</th>
+                                <th>Error Message</th>
+                                <th>Stack Trace</th>
+                            </tr>
+                        </thead>
+                        <tbody id="errorTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div id="tabTimeline" class="tab-content">
+                    <div style="margin-bottom: 16px;">
+                        <span style="font-size: 13px; color: var(--text-muted);">Complete chronological lifecycle audit log from initial setup installation to current status:</span>
+                    </div>
+                    <ul id="timelineList" class="timeline-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Action Modal -->
+    <div id="actionModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modalTitle">Action Title</h3>
+            <p id="modalPrompt" style="font-size: 13px; color: var(--text-muted);">Prompt details...</p>
+            <input type="text" id="modalInput" class="modal-input">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-confirm" onclick="submitModal()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allClients = [];
+        let allHistory = [];
+        let allSync = [];
+        let allErrors = [];
+        let allTimeline = [];
+
+        let currentView = 'clients';
+        let activeModalMachineId = '';
+        let activeModalAction = '';
+        let currentDetailMachineId = '';
+
+        // Top-Level Navigation Switcher
+        function switchMainView(view) {
+            currentView = view;
+            document.querySelectorAll('.main-nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+
+            if (view === 'clients') {
+                document.getElementById('btnViewClients').classList.add('active');
+                document.getElementById('secClients').classList.add('active');
+                loadClients();
+            } else if (view === 'history') {
+                document.getElementById('btnViewHistory').classList.add('active');
+                document.getElementById('secHistory').classList.add('active');
+                loadRunningHistory();
+            } else if (view === 'sync') {
+                document.getElementById('btnViewSync').classList.add('active');
+                document.getElementById('secSync').classList.add('active');
+                loadSyncHistory();
+            } else if (view === 'errors') {
+                document.getElementById('btnViewErrors').classList.add('active');
+                document.getElementById('secErrors').classList.add('active');
+                loadErrorLogs();
+            } else if (view === 'timeline') {
+                document.getElementById('btnViewTimeline').classList.add('active');
+                document.getElementById('secTimeline').classList.add('active');
+                loadAuditTimeline();
+            }
+        }
+
+        // 1. Load Clients
+        async function loadClients() {
+            try {
+                const res = await fetch('/api/license/clients');
+                allClients = await res.json();
+                renderTable(allClients);
+                updateKPIs(allClients);
+                document.getElementById('cntClients').innerText = allClients.length;
+                updateNavCounters();
+            } catch (err) {
+                console.error('Error loading clients:', err);
+            }
+        }
+
+        async function updateNavCounters() {
+            try {
+                fetch('/api/license/reports/running-history').then(r => r.json()).then(d => {
+                    const el = document.getElementById('cntHistory');
+                    if (el && Array.isArray(d)) el.innerText = d.length;
+                }).catch(() => {});
+
+                fetch('/api/license/reports/sync-history').then(r => r.json()).then(d => {
+                    const el = document.getElementById('cntSync');
+                    if (el && Array.isArray(d)) el.innerText = d.length;
+                }).catch(() => {});
+
+                fetch('/api/license/reports/error-logs').then(r => r.json()).then(d => {
+                    const el = document.getElementById('cntErrors');
+                    if (el && Array.isArray(d)) {
+                        el.innerText = d.length;
+                        el.style.color = d.length > 0 ? '#F87171' : '#94A3B8';
+                    }
+                }).catch(() => {});
+
+                fetch('/api/license/reports/audit-timeline').then(r => r.json()).then(d => {
+                    const el = document.getElementById('cntTimeline');
+                    if (el && Array.isArray(d)) el.innerText = d.length;
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
+        function updateKPIs(clients) {
+            let totalRunning = 0;
+            let installed = 0;
+            let uninstalled = 0;
+            let active = 0;
+            let trial = 0;
+            let suspended = 0;
+
+            clients.forEach(c => {
+                totalRunning += (c.activeInstances ? c.activeInstances.length : 0);
+                if (c.installState === 'Uninstalled') uninstalled++;
+                else installed++;
+
+                if (c.status === 'Active') active++;
+                else if (c.status === 'Trial') trial++;
+                else if (c.status === 'Suspended') suspended++;
+            });
+
+            document.getElementById('kpiRunning').innerText = totalRunning;
+            document.getElementById('kpiInstalled').innerText = installed;
+            document.getElementById('kpiUninstalled').innerText = uninstalled;
+            document.getElementById('kpiActive').innerText = active;
+            document.getElementById('kpiTrial').innerText = trial;
+            document.getElementById('kpiSuspended').innerText = suspended;
+        }
+
+        function renderTable(clients) {
+            const tbody = document.getElementById('clientTableBody');
+            if (!clients || clients.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">No POS machines registered yet. Start client POS or installer to auto-register.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = clients.map(c => {
+                const isOnline = c.activeInstances && c.activeInstances.length > 0;
+                const runCount = c.activeInstances ? c.activeInstances.length : 0;
+                const statusBadge = getStatusBadge(c.status);
+                const isUninstalled = c.installState === 'Uninstalled';
+
+                let liveBadge = isOnline 
+                    ? `<span class="badge badge-live">🟢 RUNNING (${runCount})</span>`
+                    : '<span class="badge" style="background: #1E293B; color: #94A3B8;">⚪ Offline</span>';
+
+                let installBadge = isUninstalled
+                    ? '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #F87171;">❌ Uninstalled</span>'
+                    : '<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38BDF8;">📦 Installed</span>';
+
+                return `
+                    <tr>
+                        <td>${liveBadge}</td>
+                        <td>${installBadge}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <strong style="color: white; font-size: 13.5px;">${escapeHtml(c.restaurantName || 'Abhishek Mahant Restaurant')}</strong>
+                            <div style="font-size: 11.5px; color: var(--text-muted);">${escapeHtml(c.clientName || 'Counter Main')} ${c.phoneNumber ? '• ' + escapeHtml(c.phoneNumber) : ''}</div>
+                        </td>
+                        <td>
+                            <code style="background: #0F172A; padding: 4px 8px; border-radius: 6px; font-size: 11.5px; border: 1px solid var(--border-color); color: var(--accent-cyan); cursor: pointer;" 
+                                  onclick="copyText('${c.machineId}')" title="Click to copy">${c.machineId}</code>
+                        </td>
+                        <td>
+                            <div style="color: #E2E8F0;">${escapeHtml(c.clientVersion || 'v2.1.0')}</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(c.clientIp || '127.0.0.1')}</div>
+                        </td>
+                        <td>
+                            ${c.status === 'Trial' ? `<strong style="color: #FBBF24;">${c.trialDaysRemaining} Days</strong>` : '<span style="color: var(--text-muted);">—</span>'}
+                        </td>
+                        <td>
+                            <div style="font-size: 11.5px;">${formatDate(c.lastHeartbeatAt)}</div>
+                            <small style="color: var(--text-muted);">${timeAgo(new Date(c.lastHeartbeatAt))}</small>
+                        </td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <button class="btn-action btn-details" onclick="showDetails('${c.machineId}')" title="View full lifecycle diagnostics, app running on/off, sync &amp; errors">🔍 Details</button>
+                            ${c.status !== 'Active' ? `<button class="btn-action btn-activate" onclick="remoteAction('${c.machineId}', 'Activate')" title="Remotely approve &amp; activate permanent license">✅ Activate</button>` : ''}
+                            ${c.status !== 'Suspended' ? `<button class="btn-action btn-kill" onclick="remoteAction('${c.machineId}', 'Suspend')" title="Instantly remotely lock &amp; suspend this POS machine">🛑 Kill / Suspend</button>` : ''}
+                            <button class="btn-action btn-trial" onclick="promptSetTrial('${c.machineId}')" title="Change trial expiration duration">⏳ Trial</button>
+                            <button class="btn-action btn-key" onclick="showKey('${c.machineId}')" title="Generate offline secret activation key">🔑 Gen Key</button>
+                            <button class="btn-action btn-msg" onclick="promptMessage('${c.machineId}', '${escapeHtml(c.developerMessage || '')}')" title="Broadcast alert message to POS screen">💬 Msg</button>
+                            <button class="btn-action" style="background: #334155; color: #EF4444;" onclick="deleteClient('${c.machineId}')" title="Delete client record">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 2. Load ⏱️ App Running History (ON / OFF)
+        async function loadRunningHistory() {
+            try {
+                const res = await fetch('/api/license/reports/running-history');
+                allHistory = await res.json();
+                renderHistoryTable(allHistory);
+            } catch (err) {
+                console.error('Error loading history:', err);
+            }
+        }
+
+        function renderHistoryTable(items) {
+            const tbody = document.getElementById('historyTableBody');
+            if (!items || items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">No POS sessions recorded yet. Start any POS Desktop to record launch &amp; exit history.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = items.map(h => {
+                const isRunning = h.isActive;
+                const statusBadge = isRunning
+                    ? '<span class="badge badge-live">🟢 LIVE RUNNING</span>'
+                    : '<span class="badge" style="background: #1E293B; color: #94A3B8;">⚪ CLOSED</span>';
+
+                const duration = formatDuration(h.durationSeconds);
+                const endedText = h.endedAt ? formatDate(h.endedAt) : '<strong style="color: #34D399;">Running Now...</strong>';
+
+                return `
+                    <tr>
+                        <td>${statusBadge}</td>
+                        <td><code style="color: var(--accent-cyan); font-size: 12px;">${h.machineId}</code></td>
+                        <td><code style="color: #CBD5E1;">${h.processId || '—'}</code></td>
+                        <td>
+                            <strong style="color: white;">${escapeHtml(h.appName || 'POS Client')}</strong>
+                            <div style="font-size: 11px; color: var(--text-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(h.appPath)}">${escapeHtml(h.appPath || '—')}</div>
+                        </td>
+                        <td>${formatDate(h.startedAt)}</td>
+                        <td>${endedText}</td>
+                        <td><strong style="color: #38BDF8;">${duration}</strong></td>
+                        <td><span style="color: ${isRunning ? '#34D399' : '#94A3B8'};">${escapeHtml(h.exitReason || 'Running')}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterHistory() {
+            const q = document.getElementById('searchHistory').value.toLowerCase();
+            const statusFilter = document.getElementById('filterHistoryStatus').value;
+
+            const filtered = allHistory.filter(h => {
+                const matchesQ = (h.machineId && h.machineId.toLowerCase().includes(q)) ||
+                                 (h.appName && h.appName.toLowerCase().includes(q)) ||
+                                 (h.exitReason && h.exitReason.toLowerCase().includes(q));
+
+                if (!matchesQ) return false;
+                if (statusFilter === 'running') return h.isActive;
+                if (statusFilter === 'exited') return !h.isActive;
+                return true;
+            });
+            renderHistoryTable(filtered);
+        }
+
+        // 3. Load 🔄 Data Sync Report
+        async function loadSyncHistory() {
+            try {
+                const res = await fetch('/api/license/reports/sync-history');
+                allSync = await res.json();
+                renderSyncTable(allSync);
+            } catch (err) {
+                console.error('Error loading sync logs:', err);
+            }
+        }
+
+        function renderSyncTable(items) {
+            const tbody = document.getElementById('syncMasterTableBody');
+            if (!items || items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No data synchronization events reported yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = items.map(s => {
+                const isSuccess = s.status === 'Success';
+                const statusBadge = isSuccess
+                    ? '<span class="badge badge-active">● Success</span>'
+                    : '<span class="badge badge-suspended">● Failed</span>';
+
+                return `
+                    <tr>
+                        <td>${formatDate(s.timestamp)}</td>
+                        <td><code style="color: var(--accent-cyan); font-size: 12px;">${s.machineId}</code></td>
+                        <td><strong style="color: white;">${escapeHtml(s.syncType)}</strong></td>
+                        <td><span style="background: #0F172A; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #38BDF8;">${s.recordsCount} records</span></td>
+                        <td>${statusBadge}</td>
+                        <td style="color: #CBD5E1; max-width: 320px;">${escapeHtml(s.details || 'Sync completed cleanly')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterSync() {
+            const q = document.getElementById('searchSync').value.toLowerCase();
+            const statusFilter = document.getElementById('filterSyncStatus').value;
+
+            const filtered = allSync.filter(s => {
+                const matchesQ = (s.machineId && s.machineId.toLowerCase().includes(q)) ||
+                                 (s.syncType && s.syncType.toLowerCase().includes(q)) ||
+                                 (s.details && s.details.toLowerCase().includes(q));
+                if (!matchesQ) return false;
+                if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+                return true;
+            });
+            renderSyncTable(filtered);
+        }
+
+        // 4. Load ⚠️ Error & Diagnostics Report
+        async function loadErrorLogs() {
+            try {
+                const res = await fetch('/api/license/reports/error-logs');
+                allErrors = await res.json();
+                renderErrorTable(allErrors);
+            } catch (err) {
+                console.error('Error loading errors:', err);
+            }
+        }
+
+        function renderErrorTable(items) {
+            const tbody = document.getElementById('errorMasterTableBody');
+            if (!items || items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #34D399; padding: 30px;">🟢 Clean Health! No application errors reported across all POS machines.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = items.map(e => {
+                const isCrit = e.severity === 'Critical' || e.severity === 'Error';
+                const sevBadge = isCrit
+                    ? '<span class="badge badge-suspended">● Error</span>'
+                    : '<span class="badge badge-trial">● Warning</span>';
+
+                const winName = e.activeWindow || 'Startup / Background';
+
+                return `
+                    <tr>
+                        <td>${formatDate(e.timestamp)}</td>
+                        <td>${sevBadge}</td>
+                        <td><span class="badge" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); color: #A5B4FC; font-weight: 600; white-space: nowrap;">🪟 ${escapeHtml(winName)}</span></td>
+                        <td><code style="color: var(--accent-cyan); font-size: 12px;">${e.machineId}</code></td>
+                        <td><strong style="color: white;">${escapeHtml(e.source || 'POS')}</strong></td>
+                        <td style="color: #F87171; max-width: 320px; font-weight: 600;">${escapeHtml(e.message)}</td>
+                        <td style="font-family: monospace; font-size: 11px; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(e.stackTrace)}">${escapeHtml(e.stackTrace || 'No stack trace')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterErrors() {
+            const q = document.getElementById('searchErrors').value.toLowerCase();
+            const sevFilter = document.getElementById('filterErrorSeverity').value;
+
+            const filtered = allErrors.filter(e => {
+                const matchesQ = (e.machineId && e.machineId.toLowerCase().includes(q)) ||
+                                 (e.source && e.source.toLowerCase().includes(q)) ||
+                                 (e.activeWindow && e.activeWindow.toLowerCase().includes(q)) ||
+                                 (e.message && e.message.toLowerCase().includes(q));
+                if (!matchesQ) return false;
+                if (sevFilter !== 'all' && e.severity !== sevFilter) return false;
+                return true;
+            });
+            renderErrorTable(filtered);
+        }
+
+        // 5. Load 📜 Full Audit Timeline
+        async function loadAuditTimeline() {
+            try {
+                const res = await fetch('/api/license/reports/audit-timeline');
+                allTimeline = await res.json();
+                renderTimelineList(allTimeline);
+            } catch (err) {
+                console.error('Error loading timeline:', err);
+            }
+        }
+
+        function renderTimelineList(items) {
+            const list = document.getElementById('timelineMasterList');
+            if (!items || items.length === 0) {
+                list.innerHTML = '<li style="color: var(--text-muted); padding: 20px;">No audit timeline entries found yet.</li>';
+                return;
+            }
+
+            list.innerHTML = items.map(t => {
+                let dotColor = '#38BDF8';
+                let icon = '📌';
+                if (t.eventType === 'Installed') { dotColor = '#38BDF8'; icon = '📦'; }
+                else if (t.eventType === 'Uninstalled') { dotColor = '#EF4444'; icon = '❌'; }
+                else if (t.eventType === 'AppStarted') { dotColor = '#10B981'; icon = '🟢'; }
+                else if (t.eventType === 'AppExited') { dotColor = '#94A3B8'; icon = '⚪'; }
+                else if (t.eventType === 'Sync') { dotColor = '#06B6D4'; icon = '🔄'; }
+                else if (t.eventType === 'Error') { dotColor = '#EF4444'; icon = '⚠️'; }
+                else if (t.eventType === 'Activate') { dotColor = '#10B981'; icon = '🔑'; }
+                else if (t.eventType === 'Suspend') { dotColor = '#DC2626'; icon = '🛑'; }
+
+                return `
+                    <li class="timeline-item">
+                        <div class="timeline-dot" style="border-color: ${dotColor};">${icon}</div>
+                        <div class="timeline-time">${formatDate(t.timestamp)} (${timeAgo(new Date(t.timestamp))}) • <code style="color: var(--accent-cyan);">${t.machineId}</code></div>
+                        <div class="timeline-title">${escapeHtml(t.title)}</div>
+                        <div class="timeline-desc">${escapeHtml(t.details || '')}</div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function filterTimeline() {
+            const q = document.getElementById('searchTimeline').value.toLowerCase();
+            const filtered = allTimeline.filter(t => 
+                (t.machineId && t.machineId.toLowerCase().includes(q)) ||
+                (t.eventType && t.eventType.toLowerCase().includes(q)) ||
+                (t.title && t.title.toLowerCase().includes(q)) ||
+                (t.details && t.details.toLowerCase().includes(q))
+            );
+            renderTimelineList(filtered);
+        }
+
+        // CSV Export Functions
+        function downloadCsv(filename, headers, rows) {
+            const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportClientsCsv() {
+            const headers = ['MachineId', 'RestaurantName', 'ClientName', 'Status', 'InstallState', 'RegisteredAt', 'LastHeartbeatAt'];
+            const rows = allClients.map(c => [
+                `"${c.machineId}"`,
+                `"${c.restaurantName || ''}"`,
+                `"${c.clientName || ''}"`,
+                `"${c.status}"`,
+                `"${c.installState || ''}"`,
+                `"${c.registeredAt}"`,
+                `"${c.lastHeartbeatAt}"`
+            ]);
+            downloadCsv('Clients_Report_' + new Date().toISOString().slice(0, 10) + '.csv', headers, rows);
+        }
+
+        function exportHistoryCsv() {
+            const headers = ['MachineId', 'AppName', 'ProcessId', 'StartedAt', 'EndedAt', 'DurationSeconds', 'ExitReason', 'IsActive'];
+            const rows = allHistory.map(h => [
+                `"${h.machineId}"`,
+                `"${h.appName || ''}"`,
+                `"${h.processId}"`,
+                `"${h.startedAt}"`,
+                `"${h.endedAt || ''}"`,
+                `"${h.durationSeconds}"`,
+                `"${h.exitReason || ''}"`,
+                `"${h.isActive ? 'Running' : 'Closed'}"`
+            ]);
+            downloadCsv('App_Running_History_' + new Date().toISOString().slice(0, 10) + '.csv', headers, rows);
+        }
+
+        function exportSyncCsv() {
+            const headers = ['Timestamp', 'MachineId', 'SyncType', 'RecordsCount', 'Status', 'Details'];
+            const rows = allSync.map(s => [
+                `"${s.timestamp}"`,
+                `"${s.machineId}"`,
+                `"${s.syncType}"`,
+                `"${s.recordsCount}"`,
+                `"${s.status}"`,
+                `"${(s.details || '').replace(/"/g, '""')}"`
+            ]);
+            downloadCsv('Data_Sync_Report_' + new Date().toISOString().slice(0, 10) + '.csv', headers, rows);
+        }
+
+        function exportErrorsCsv() {
+            const headers = ['Timestamp', 'Severity', 'ActiveWindow', 'MachineId', 'Source', 'Message', 'StackTrace'];
+            const rows = allErrors.map(e => [
+                `"${e.timestamp}"`,
+                `"${e.severity}"`,
+                `"${(e.activeWindow || 'Startup / Background').replace(/"/g, '""')}"`,
+                `"${e.machineId}"`,
+                `"${e.source || ''}"`,
+                `"${(e.message || '').replace(/"/g, '""')}"`,
+                `"${(e.stackTrace || '').replace(/"/g, '""')}"`
+            ]);
+            downloadCsv('Error_Diagnostics_Report_' + new Date().toISOString().slice(0, 10) + '.csv', headers, rows);
+        }
+
+        function exportTimelineCsv() {
+            const headers = ['Timestamp', 'MachineId', 'EventType', 'Title', 'Details'];
+            const rows = allTimeline.map(t => [
+                `"${t.timestamp}"`,
+                `"${t.machineId}"`,
+                `"${t.eventType}"`,
+                `"${t.title.replace(/"/g, '""')}"`,
+                `"${(t.details || '').replace(/"/g, '""')}"`
+            ]);
+            downloadCsv('Audit_Timeline_' + new Date().toISOString().slice(0, 10) + '.csv', headers, rows);
+        }
+
+        // Details Modal Functions
+        async function showDetails(machineId) {
+            currentDetailMachineId = machineId;
+            document.getElementById('detailsModal').style.display = 'flex';
+            await refreshCurrentDetails();
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').style.display = 'none';
+        }
+
+        async function refreshCurrentDetails() {
+            if (!currentDetailMachineId) return;
+            try {
+                const res = await fetch(`/api/license/clients/${currentDetailMachineId}/details`);
+                const d = await res.json();
+                renderClientDetails(d);
+            } catch (err) {
+                console.error('Error fetching client details:', err);
+            }
+        }
+
+        function renderClientDetails(d) {
+            const lic = d.license;
+            document.getElementById('modalClientName').innerText = lic.restaurantName || 'Abhishek Mahant POS Client';
+            document.getElementById('modalClientMeta').innerText = `Machine ID: ${lic.machineId} • Client: ${lic.clientName || 'Counter'} • IP: ${lic.clientIp || '127.0.0.1'} • Version: ${lic.clientVersion || 'v2.1.0'}`;
+
+            const liveCnt = d.activeSessions ? d.activeSessions.length : 0;
+            document.getElementById('detLiveRunning').innerHTML = liveCnt > 0 
+                ? `<span style="color: #34D399;">🟢 ${liveCnt} Instance(s) Running</span>`
+                : '<span style="color: #94A3B8;">⚪ Offline</span>';
+
+            document.getElementById('detInstalledAt').innerText = lic.installedAt ? formatDate(lic.installedAt) : '📅 First run';
+            document.getElementById('detUninstalledAt').innerText = lic.uninstalledAt ? formatDate(lic.uninstalledAt) : 'Never (Active)';
+            document.getElementById('detLicenseStatus').innerHTML = getStatusBadge(lic.status);
+
+            // 1. Session History
+            const sessBody = document.getElementById('sessionTableBody');
+            if (!d.sessionHistory || d.sessionHistory.length === 0) {
+                sessBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">No session history recorded yet.</td></tr>';
+            } else {
+                sessBody.innerHTML = d.sessionHistory.map(s => {
+                    const isRunning = s.isActive;
+                    return `
+                        <tr>
+                            <td>${isRunning ? '<span class="badge badge-live">🟢 RUNNING</span>' : '<span class="badge" style="background: #1E293B; color: #94A3B8;">⚪ CLOSED</span>'}</td>
+                            <td><code>${s.processId || '—'}</code></td>
+                            <td>${escapeHtml(s.appName || 'POS')}</td>
+                            <td>${formatDate(s.startedAt)}</td>
+                            <td>${s.endedAt ? formatDate(s.endedAt) : '<span style="color: #34D399;">Running now...</span>'}</td>
+                            <td><strong>${formatDuration(s.durationSeconds)}</strong></td>
+                            <td style="color: ${isRunning ? '#34D399' : '#94A3B8'};">${escapeHtml(s.exitReason || 'Running')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // 2. Sync History
+            const syncBody = document.getElementById('syncTableBody');
+            if (!d.syncLogs || d.syncLogs.length === 0) {
+                syncBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">No data sync events reported yet.</td></tr>';
+            } else {
+                syncBody.innerHTML = d.syncLogs.map(s => `
+                    <tr>
+                        <td>${formatDate(s.timestamp)}</td>
+                        <td><strong>${escapeHtml(s.syncType)}</strong></td>
+                        <td><span style="background: #0F172A; padding: 2px 6px; border-radius: 4px; color: #38BDF8;">${s.recordsCount} records</span></td>
+                        <td>${s.status === 'Success' ? '<span class="badge badge-active">● Success</span>' : '<span class="badge badge-suspended">● Failed</span>'}</td>
+                        <td style="color: #CBD5E1;">${escapeHtml(s.details || 'Sync completed')}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // 3. Error Logs
+            const errBody = document.getElementById('errorTableBody');
+            if (!d.errorLogs || d.errorLogs.length === 0) {
+                errBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #34D399; padding: 20px;">🟢 Clean Health! No application errors reported for this POS.</td></tr>';
+            } else {
+                errBody.innerHTML = d.errorLogs.map(e => `
+                    <tr>
+                        <td>${formatDate(e.timestamp)}</td>
+                        <td><span style="color: ${e.severity === 'Error' ? '#EF4444' : '#F59E0B'}; font-weight: 700;">● ${escapeHtml(e.severity)}</span></td>
+                        <td><span class="badge" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); color: #A5B4FC; font-weight: 600;">🪟 ${escapeHtml(e.activeWindow || 'Startup / Background')}</span></td>
+                        <td><strong>${escapeHtml(e.source)}</strong></td>
+                        <td style="color: #F87171;">${escapeHtml(e.message)}</td>
+                        <td style="font-family: monospace; font-size: 11px; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(e.stackTrace)}">${escapeHtml(e.stackTrace || 'No stack trace')}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // 4. Combined Timeline
+            const timeList = document.getElementById('timelineList');
+            if (!d.timeline || d.timeline.length === 0) {
+                timeList.innerHTML = '<li style="color: var(--text-muted); padding: 10px;">No audit timeline entries found.</li>';
+            } else {
+                timeList.innerHTML = d.timeline.map(t => `
+                    <li class="timeline-item">
+                        <div class="timeline-dot">📌</div>
+                        <div class="timeline-time">${formatDate(t.timestamp)} (${timeAgo(new Date(t.timestamp))})</div>
+                        <div class="timeline-title">${escapeHtml(t.title)}</div>
+                        <div class="timeline-desc">${escapeHtml(t.details)}</div>
+                    </li>
+                `).join('');
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function formatDuration(sec) {
+            if (!sec || sec <= 0) return '< 1 min';
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            const h = Math.floor(m / 60);
+            if (h > 0) return `${h}h ${m % 60}m`;
+            return `${m}m ${s}s`;
+        }
+
+        function formatDate(dStr) {
+            if (!dStr) return '';
+            const d = new Date(dStr);
+            if (isNaN(d.getTime())) return dStr;
+            return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + 
+                   d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        function getStatusBadge(status) {
+            switch (status) {
+                case 'Active': return '<span class="badge badge-active">● Active</span>';
+                case 'Trial': return '<span class="badge badge-trial">⏳ Trial</span>';
+                case 'Suspended': return '<span class="badge badge-suspended">🛑 Killed / Suspended</span>';
+                case 'Expired': return '<span class="badge badge-expired">⚠️ Expired</span>';
+                default: return `<span class="badge">${status}</span>`;
+            }
+        }
+
+        function filterClients() {
+            const q = document.getElementById('searchBox').value.toLowerCase();
+            const filtered = allClients.filter(c => 
+                (c.restaurantName && c.restaurantName.toLowerCase().includes(q)) ||
+                (c.clientName && c.clientName.toLowerCase().includes(q)) ||
+                (c.machineId && c.machineId.toLowerCase().includes(q)) ||
+                (c.phoneNumber && c.phoneNumber.toLowerCase().includes(q))
+            );
+            renderTable(filtered);
+        }
+
+        async function remoteAction(machineId, action, extra = {}) {
+            if (action === 'Suspend') {
+                if (!confirm(`Are you sure you want to REMOTELY SUSPEND machine ${machineId}? The POS will be immediately locked on next check!`)) return;
+            }
+            try {
+                const res = await fetch('/api/license/control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machineId, action, ...extra })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    await loadClients();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (err) {
+                alert('Action failed: ' + err.message);
+            }
+        }
+
+        async function deleteClient(machineId) {
+            if (!confirm(`Delete client record ${machineId}? (If POS reconnects, it will re-register).`)) return;
+            try {
+                const res = await fetch(`/api/license/clients/${machineId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    await loadClients();
+                }
+            } catch (err) {
+                alert('Delete failed: ' + err.message);
+            }
+        }
+
+        function promptSetTrial(machineId) {
+            activeModalMachineId = machineId;
+            activeModalAction = 'SetTrial';
+            document.getElementById('modalTitle').innerText = 'Set Trial Days';
+            document.getElementById('modalPrompt').innerText = 'Enter number of days for trial period:';
+            document.getElementById('modalInput').value = '15';
+            document.getElementById('actionModal').style.display = 'flex';
+        }
+
+        function promptMessage(machineId, currentMsg) {
+            activeModalMachineId = machineId;
+            activeModalAction = 'SetMessage';
+            document.getElementById('modalTitle').innerText = 'Send Developer Message';
+            document.getElementById('modalPrompt').innerText = 'Enter broadcast message displayed inside client POS:';
+            document.getElementById('modalInput').value = currentMsg || '';
+            document.getElementById('actionModal').style.display = 'flex';
+        }
+
+        async function showKey(machineId) {
+            try {
+                const res = await fetch(`/api/license/generate-key/${machineId}`);
+                const data = await res.json();
+                alert(`Permanent Offline Activation Key for ${machineId}:\n\n${data.activationKey}\n\nClient can enter this in POS Lock Screen to activate offline permanently!`);
+            } catch (err) {
+                alert('Failed to generate key: ' + err.message);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('actionModal').style.display = 'none';
+        }
+
+        async function submitModal() {
+            const val = document.getElementById('modalInput').value.trim();
+            if (activeModalAction === 'SetTrial') {
+                const days = parseInt(val) || 15;
+                await remoteAction(activeModalMachineId, 'SetTrial', { trialDays: days });
+            } else if (activeModalAction === 'SetMessage') {
+                await remoteAction(activeModalMachineId, 'SetMessage', { developerMessage: val });
+            }
+            closeModal();
+        }
+
+        function copyText(txt) {
+            navigator.clipboard.writeText(txt);
+            alert('Copied to clipboard: ' + txt);
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 30) return 'Just now';
+            if (seconds < 60) return seconds + 's ago';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            return Math.floor(hours / 24) + 'd ago';
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Initial Load & Auto-Refresh active view
+        loadClients();
+        setInterval(() => {
+            if (currentView === 'clients') loadClients();
+            else if (currentView === 'history') loadRunningHistory();
+            else if (currentView === 'sync') loadSyncHistory();
+            else if (currentView === 'errors') loadErrorLogs();
+            else if (currentView === 'timeline') loadAuditTimeline();
+        }, 3500);
+    </script>
+</body>
+</html>

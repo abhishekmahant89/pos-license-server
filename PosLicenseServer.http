@@ -1,0 +1,6 @@
+@PosLicenseServer_HostAddress = http://localhost:5117
+
+GET {{PosLicenseServer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
