@@ -70,8 +70,9 @@ app.MapPost("/api/license/verify", async (HttpContext ctx, LicenseCheckRequest r
     var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
     var license = await db.RegisterOrHeartbeatAsync(req, clientIp);
 
-    // Telegram Notification on Client Start / Heartbeat
-    if (req.Action != "exit" && req.Action != "uninstall")
+    // Telegram Notification ONLY on Client Startup (NOT on periodic heartbeats)
+    var act = (req.Action ?? "").ToLowerInvariant();
+    if (act == "startup" || act == "start" || (act != "heartbeat" && act != "exit" && act != "uninstall"))
     {
         _ = telegram.NotifyAppStartedAsync(license.MachineId, license.RestaurantName ?? license.ClientName ?? "Client POS", req.ProcessId ?? 0, clientIp);
     }
@@ -122,7 +123,7 @@ app.MapPost("/api/license/uninstall", async (LicenseCheckRequest req, LicenseDb 
 });
 
 // 4. Client Exit Notification (Instant Session Cleanup)
-app.MapPost("/api/license/exit", async (LicenseCheckRequest req, LicenseDb db) =>
+app.MapPost("/api/license/exit", async (HttpContext ctx, LicenseCheckRequest req, LicenseDb db, TelegramBotService telegram) =>
 {
     if (string.IsNullOrWhiteSpace(req.MachineId))
     {
@@ -130,7 +131,12 @@ app.MapPost("/api/license/exit", async (LicenseCheckRequest req, LicenseDb db) =
     }
 
     req.Action = "exit";
-    await db.RegisterOrHeartbeatAsync(req, "ExitHandler");
+    var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+    var license = await db.RegisterOrHeartbeatAsync(req, "ExitHandler");
+
+    // Telegram Notification on Client Stopped (OFF)
+    _ = telegram.NotifyAppStoppedAsync(license.MachineId, license.RestaurantName ?? license.ClientName ?? "Client POS", req.ProcessId ?? 0, clientIp);
+
     return Results.Ok(new { success = true });
 });
 

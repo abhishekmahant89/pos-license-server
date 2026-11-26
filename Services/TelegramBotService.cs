@@ -202,31 +202,65 @@ public class TelegramBotService
             var config = await GetEffectiveConfigAsync();
             if (!config.IsConfigured || !config.EnableAppStartAlert) return;
 
-            // Throttle to max 1 alert per machine every 2 minutes
+            // Throttle duplicate start alerts for the same machine/process within 15 seconds
             var now = DateTime.UtcNow;
-            if (_lastAppStartAlerts.TryGetValue(machineId, out var lastTime) && (now - lastTime).TotalMinutes < 2)
+            var key = $"{machineId}-{processId}";
+            if (_lastAppStartAlerts.TryGetValue(key, out var lastTime) && (now - lastTime).TotalSeconds < 15)
             {
                 return;
             }
-            _lastAppStartAlerts[machineId] = now;
+            _lastAppStartAlerts[key] = now;
 
             var istNow = DateTime.UtcNow.AddHours(5).AddMinutes(30);
             var msg = new StringBuilder();
-            msg.AppendLine("🟢 <b>POS APPLICATION STARTED</b>");
+            msg.AppendLine("🟢 <b>POS APPLICATION STARTED / ONLINE</b>");
             msg.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━");
             msg.AppendLine($"🏢 <b>Client:</b> {clientName}");
             msg.AppendLine($"💻 <b>Machine ID:</b> <code>{machineId}</code>");
-            msg.AppendLine($"🆔 <b>Process ID:</b> <code>{processId}</code>");
+            if (processId > 0)
+            {
+                msg.AppendLine($"🆔 <b>Process ID:</b> <code>{processId}</code>");
+            }
             msg.AppendLine($"🌐 <b>Client IP:</b> <code>{ip}</code>");
             msg.AppendLine($"⏰ <b>Started At:</b> {istNow:dd-MMM-yyyy hh:mm:ss tt} IST");
             msg.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━");
-            msg.AppendLine("Status: Client is online and active.");
+            msg.AppendLine("Status: Application is running.");
 
             await SendRawMessageAsync(config.BotToken, config.ChatId, msg.ToString());
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed in NotifyAppStartedAsync");
+        }
+    }
+
+    public async Task NotifyAppStoppedAsync(string machineId, string clientName, int processId, string ip)
+    {
+        try
+        {
+            var config = await GetEffectiveConfigAsync();
+            if (!config.IsConfigured || !config.EnableAppStartAlert) return;
+
+            var istNow = DateTime.UtcNow.AddHours(5).AddMinutes(30);
+            var msg = new StringBuilder();
+            msg.AppendLine("🔴 <b>POS APPLICATION STOPPED / OFFLINE</b>");
+            msg.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━");
+            msg.AppendLine($"🏢 <b>Client:</b> {clientName}");
+            msg.AppendLine($"💻 <b>Machine ID:</b> <code>{machineId}</code>");
+            if (processId > 0)
+            {
+                msg.AppendLine($"🆔 <b>Process ID:</b> <code>{processId}</code>");
+            }
+            msg.AppendLine($"🌐 <b>Client IP:</b> <code>{ip}</code>");
+            msg.AppendLine($"⏰ <b>Stopped At:</b> {istNow:dd-MMM-yyyy hh:mm:ss tt} IST");
+            msg.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━");
+            msg.AppendLine("Status: Application closed.");
+
+            await SendRawMessageAsync(config.BotToken, config.ChatId, msg.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed in NotifyAppStoppedAsync");
         }
     }
 
