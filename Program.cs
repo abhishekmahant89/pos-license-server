@@ -72,7 +72,7 @@ app.MapPost("/api/license/verify", async (HttpContext ctx, LicenseCheckRequest r
 
     // Telegram Notification ONLY on Client Startup (NOT on periodic heartbeats)
     var act = (req.Action ?? "").ToLowerInvariant();
-    if (act == "startup" || act == "start" || (act != "heartbeat" && act != "exit" && act != "uninstall"))
+    if (act == "startup" || act == "start")
     {
         _ = telegram.NotifyAppStartedAsync(license.MachineId, license.RestaurantName ?? license.ClientName ?? "Client POS", req.ProcessId ?? 0, clientIp);
     }
